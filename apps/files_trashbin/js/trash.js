@@ -32,20 +32,6 @@ $(document).ready(function() {
 		enableActions();
 	}
 
-	function removeCallback(result) {
-		if (result.status !== 'success') {
-			OC.dialogs.alert(result.data.message, t('core', 'Error'));
-		}
-
-		var files = result.data.success;
-		for (var i = 0; i < files.length; i++) {
-			FileList.remove(OC.basename(files[i].filename), {updateSummary: false});
-		}
-		FileList.updateFileSummary();
-		FileList.updateEmptyContent();
-		enableActions();
-	}
-
 	if (typeof FileActions !== 'undefined') {
 		FileActions.register('all', 'Restore', OC.PERMISSION_READ, OC.imagePath('core', 'actions/history'), function(filename) {
 			var tr = FileList.findFileEl(filename);

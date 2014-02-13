@@ -167,8 +167,11 @@ var Files = {
 		if ($.isArray(filename)) {
 			filename = JSON.stringify(filename);
 		}
+		if (typeof(dir) !== 'string') {
+			dir = FileList.getCurrentDirectory();
+		}
 		var params = {
-			dir: dir || FileList.getCurrentDirectory(),
+			dir: dir || '/',
 			files: filename
 		};
 		return this.getAjaxUrl('download', params);

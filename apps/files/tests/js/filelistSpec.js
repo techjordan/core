@@ -400,7 +400,7 @@ describe('FileList tests', function() {
 			$input.val('One_renamed.txt').blur();
 
 			expect(fakeServer.requests.length).toEqual(1);
-			var request = fakeServer.requests[0];
+			request = fakeServer.requests[0];
 			expect(request.url.substr(0, request.url.indexOf('?'))).toEqual(OC.webroot + '/index.php/apps/files/ajax/rename.php');
 			expect(OC.parseQueryString(request.url)).toEqual({'dir': '/subdir', newname: 'One_renamed.txt', file: 'One.txt'});
 
@@ -904,6 +904,25 @@ describe('FileList tests', function() {
 			$checkbox.click();
 			expect($actions.hasClass('hidden')).toEqual(true);
 		});
+		it('Selection is cleared when switching dirs', function() {
+			$('#select_all').click();
+			var data = {
+				status: 'success',
+				data: {
+					files: testFiles,
+					permissions: 31
+				}
+			};
+			fakeServer.respondWith(/\/index\.php\/apps\/files\/ajax\/list.php/, [
+					200, {
+						"Content-Type": "application/json"
+					},
+					JSON.stringify(data)
+			]);
+			FileList.changeDirectory('/');
+			fakeServer.respond();
+			expect($('#select_all').prop('checked')).toEqual(false);
+		});
 		describe('Actions', function() {
 			beforeEach(function() {
 				FileList.findFileEl('One.txt').find('input:checkbox').click();
@@ -944,21 +963,67 @@ describe('FileList tests', function() {
 					origin: 4
 				});
 			});
-			it('Opens download URL when clicking "Download"', function() {
-				var redirectStub = sinon.stub(OC, 'redirect');
-				$('.selectedActions .download').click();
-				expect(redirectStub.calledOnce).toEqual(true);
-				expect(redirectStub.getCall(0).args[0]).toEqual(OC.webroot + '/index.php/apps/files/ajax/download.php?dir=%2Fsubdir&files=%5B%22One.txt%22%2C%22Three.pdf%22%2C%22somedir%22%5D');
-				redirectStub.restore();
+			describe('Download', function() {
+				it('Opens download URL when clicking "Download"', function() {
+					var redirectStub = sinon.stub(OC, 'redirect');
+					$('.selectedActions .download').click();
+					expect(redirectStub.calledOnce).toEqual(true);
+					expect(redirectStub.getCall(0).args[0]).toEqual(OC.webroot + '/index.php/apps/files/ajax/download.php?dir=%2Fsubdir&files=%5B%22One.txt%22%2C%22Three.pdf%22%2C%22somedir%22%5D');
+					redirectStub.restore();
+				});
+				it('Downloads root folder when all selected in root folder', function() {
+					$('#dir').val('/');
+					$('#select_all').click();
+					var redirectStub = sinon.stub(OC, 'redirect');
+					$('.selectedActions .download').click();
+					expect(redirectStub.calledOnce).toEqual(true);
+					expect(redirectStub.getCall(0).args[0]).toEqual(OC.webroot + '/index.php/apps/files/ajax/download.php?dir=%2F&files=');
+					redirectStub.restore();
+				});
+				it('Downloads parent folder when all selected in subfolder', function() {
+					$('#select_all').click();
+					var redirectStub = sinon.stub(OC, 'redirect');
+					$('.selectedActions .download').click();
+					expect(redirectStub.calledOnce).toEqual(true);
+					expect(redirectStub.getCall(0).args[0]).toEqual(OC.webroot + '/index.php/apps/files/ajax/download.php?dir=%2F&files=subdir');
+					redirectStub.restore();
+				});
 			});
-			it('Deletes selected files "Delete"', function() {
-				var request;
-				$('.selectedActions .delete-selected').click();
-				expect(fakeServer.requests.length).toEqual(1);
-				request = fakeServer.requests[0];
-				expect(request.url).toEqual(OC.webroot + '/index.php/apps/files/ajax/delete.php');
-				expect(OC.parseQueryString(request.requestBody))
-					.toEqual({'dir': '/subdir', files: '["One.txt","Three.pdf","somedir"]'});
+			describe('Delete', function() {
+				it('Deletes selected files when "Delete" clicked', function() {
+					var request;
+					$('.selectedActions .delete-selected').click();
+					expect(fakeServer.requests.length).toEqual(1);
+					request = fakeServer.requests[0];
+					expect(request.url).toEqual(OC.webroot + '/index.php/apps/files/ajax/delete.php');
+					expect(OC.parseQueryString(request.requestBody))
+						.toEqual({'dir': '/subdir', files: '["One.txt","Three.pdf","somedir"]'});
+					fakeServer.requests[0].respond(
+						200,
+						{ 'Content-Type': 'application/json' },
+						JSON.stringify({status: 'success'})
+					);
+					expect(FileList.findFileEl('One.txt').length).toEqual(0);
+					expect(FileList.findFileEl('Three.pdf').length).toEqual(0);
+					expect(FileList.findFileEl('somedir').length).toEqual(0);
+					expect(FileList.findFileEl('Two.jpg').length).toEqual(1);
+				});
+				it('Deletes all files when all selected when "Delete" clicked', function() {
+					var request;
+					$('#select_all').click();
+					$('.selectedActions .delete-selected').click();
+					expect(fakeServer.requests.length).toEqual(1);
+					request = fakeServer.requests[0];
+					expect(request.url).toEqual(OC.webroot + '/index.php/apps/files/ajax/delete.php');
+					expect(OC.parseQueryString(request.requestBody))
+						.toEqual({'dir': '/subdir', allfiles: 'true'});
+					fakeServer.requests[0].respond(
+						200,
+						{ 'Content-Type': 'application/json' },
+						JSON.stringify({status: 'success'})
+					);
+					expect(FileList.isEmpty).toEqual(true);
+				});
 			});
 		});
 	});

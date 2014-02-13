@@ -171,9 +171,15 @@ window.FileList = {
 	 * Event handler for when clicking on "Download" for the selected files
 	 */
 	_onClickDownloadSelected: function(event) {
-		// TODO: isAllSelected case
-		var files = FileList.getSelectedFiles('name');
+		var files;
 		var dir = FileList.getCurrentDirectory();
+		if (FileList.isAllSelected()) {
+			files = OC.basename(dir);
+			dir = OC.dirname(dir) || '/';
+		}
+		else {
+			files = FileList.getSelectedFiles('name');
+		}
 		OC.Notification.show(t('files','Your download is being prepared. This might take some time if the files are big.'));
 		OC.redirect(Files.getDownloadUrl(files, dir));
 		return false;
@@ -183,10 +189,12 @@ window.FileList = {
 	 * Event handler for when clicking on "Delete" for the selected files
 	 */
 	_onClickDeleteSelected: function(event) {
-		// TODO: isAllSelected case
-		var files = FileList.getSelectedFiles('name');
-		event.preventDefault();
+		var files;
+		if (!FileList.isAllSelected()) {
+			files = FileList.getSelectedFiles('name');
+		}
 		FileList.do_delete(files);
+		event.preventDefault();
 		return false;
 	},
 
@@ -334,6 +342,9 @@ window.FileList = {
 
 		this.$fileList.detach();
 		this.$fileList.empty();
+
+		// clear "Select all" checkbox
+		$('#select_all').prop('checked', false);
 
 		this.isEmpty = this.files.length === 0;
 		this._nextPage();
@@ -880,36 +891,54 @@ window.FileList = {
 	inList:function(file) {
 		return FileList.findFileEl(file).length;
 	},
-	do_delete:function(files) {
-		if (files.substr) {
+	do_delete:function(files, dir) {
+		var params;
+		if (files && files.substr) {
 			files=[files];
 		}
-		for (var i=0; i<files.length; i++) {
-			var deleteAction = FileList.findFileEl(files[i]).children("td.date").children(".action.delete");
-			deleteAction.removeClass('delete-icon').addClass('progress-icon');
+		if (files) {
+			for (var i=0; i<files.length; i++) {
+				var deleteAction = FileList.findFileEl(files[i]).children("td.date").children(".action.delete");
+				deleteAction.removeClass('delete-icon').addClass('progress-icon');
+			}
 		}
 		// Finish any existing actions
 		if (FileList.lastAction) {
 			FileList.lastAction();
 		}
 
-		var fileNames = JSON.stringify(files);
+		var params = {
+			dir: dir || FileList.getCurrentDirectory()
+		};
+		if (files) {
+			params.files = JSON.stringify(files);
+		}
+		else {
+			// no files passed, delete all in current dir
+			params.allfiles = true;
+		}
+
 		$.post(OC.filePath('files', 'ajax', 'delete.php'),
-				{dir:$('#dir').val(),files:fileNames},
+				params,
 				function(result) {
 					if (result.status === 'success') {
-						$.each(files,function(index,file) {
-							var fileEl = FileList.remove(file, {updateSummary: false});
-							// FIXME: not sure why we need this after the
-							// element isn't even in the DOM any more
-							fileEl.find('input[type="checkbox"]').removeAttr('checked');
-							fileEl.removeClass('selected');
-							FileList.fileSummary.remove({type: fileEl.attr('data-type'), size: fileEl.attr('data-size')});
-						});
-						checkTrashStatus();
-						FileList.updateEmptyContent();
-						FileList.fileSummary.update();
-						FileList.updateSelectionSummary();
+						if (params.allfiles) {
+							FileList.setFiles([]);
+						}
+						else {
+							$.each(files,function(index,file) {
+								var fileEl = FileList.remove(file, {updateSummary: false});
+								// FIXME: not sure why we need this after the
+								// element isn't even in the DOM any more
+								fileEl.find('input[type="checkbox"]').removeAttr('checked');
+								fileEl.removeClass('selected');
+								FileList.fileSummary.remove({type: fileEl.attr('data-type'), size: fileEl.attr('data-size')});
+							});
+							checkTrashStatus();
+							FileList.updateEmptyContent();
+							FileList.fileSummary.update();
+							FileList.updateSelectionSummary();
+						}
 						Files.updateStorageStatistics();
 					} else {
 						if (result.status === 'error' && result.data.message) {
@@ -922,10 +951,17 @@ window.FileList = {
 						setTimeout(function() {
 							OC.Notification.hide();
 						}, 10000);
-						$.each(files,function(index,file) {
-							var deleteAction = FileList.findFileEl(file).find('.action.delete');
-							deleteAction.removeClass('progress-icon').addClass('delete-icon');
-						});
+						if (params.allfiles) {
+							// reload the page as we don't know what files were deleted
+							// and which ones remain
+							FileList.reload();
+						}
+						else {
+							$.each(files,function(index,file) {
+								var deleteAction = FileList.findFileEl(file).find('.action.delete');
+								deleteAction.removeClass('progress-icon').addClass('delete-icon');
+							});
+						}
 					}
 				});
 	},

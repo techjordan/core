@@ -539,6 +539,16 @@ describe('FileList tests', function() {
 			FileList.setFiles(testFiles);
 			expect(handler.calledOnce).toEqual(true);
 		});
+		it('does not update summary when removing non-existing files', function() {
+			// single file
+			FileList.setFiles([testFiles[0]]);
+			$summary = $('#filestable .summary');
+			expect($summary.hasClass('hidden')).toEqual(false);
+			expect($summary.find('.info').text()).toEqual('0 folders and 1 file');
+			FileList.remove('unexist.txt');
+			expect($summary.hasClass('hidden')).toEqual(false);
+			expect($summary.find('.info').text()).toEqual('0 folders and 1 file');
+		});
 	});
 	describe('file previews', function() {
 		var previewLoadStub;

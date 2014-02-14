@@ -688,10 +688,14 @@ window.FileList = {
 	 * @param name name of the file to remove
 	 * @param options optional options as map:
 	 * "updateSummary": true to update the summary (default), false otherwise
+	 * @return deleted element
 	 */
 	remove:function(name, options){
 		options = options || {};
 		var fileEl = FileList.findFileEl(name);
+		if (!fileEl.length) {
+			return null;
+		}
 		if (fileEl.data('permissions') & OC.PERMISSION_DELETE) {
 			// file is only draggable when delete permissions are set
 			fileEl.find('td.filename').draggable('destroy');

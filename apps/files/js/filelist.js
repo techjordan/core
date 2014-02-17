@@ -215,7 +215,7 @@ window.FileList = {
 		if (this.pageNumber + 1 >= this.totalPages) {
 			return;
 		}
-		if ($(window).scrollTop() + $(window).height() > $(document).height() - 20) {
+		if ($(window).scrollTop() + $(window).height() > $(document).height() - 500) {
 			this._nextPage(true);
 		}
 	},

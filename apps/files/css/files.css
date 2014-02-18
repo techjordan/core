@@ -346,15 +346,15 @@ a.action>img { max-height:16px; max-width:16px; vertical-align:text-bottom; }
 	padding:18px 14px !important;
 }
 
-#fileList a.action[data-action="Download"] { 
-	width: 80px;
-	box-sizing: border-box;
-	-moz-box-sizing: border-box;
+#fileList a.action[data-action="Download"] {
 	display: block !important;
-	position: absolute;
-	top: -10px;
 	height: 50px;
+	margin-bottom: 0;
+	margin-top: 0px;
+	position: absolute;
 	right: -12px;
+	top: -19px;
+	width: 80px;
 }
 
 #fileList tr:hover a.action, #fileList a.action.permanent {

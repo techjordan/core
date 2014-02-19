@@ -136,7 +136,7 @@ OC.Share={
 
 		return data;
 	},
-	share:function(itemType, itemSource, shareType, shareWith, permissions, itemSourceName, callback) {
+	share:function(itemType, itemSource, shareType, shareWith, permissions, itemSourceName, expirationDate, callback) {
 		$.post(OC.filePath('core', 'ajax', 'share.php'),
 			{
 				action: 'share',
@@ -145,7 +145,8 @@ OC.Share={
 				shareType: shareType,
 				shareWith: shareWith,
 				permissions: permissions,
-				itemSourceName: itemSourceName
+				itemSourceName: itemSourceName,
+				expirationDate: expirationDate
 			}, function (result) {
 			if (result && result.status === 'success') {
 				if (callback) {
@@ -291,6 +292,7 @@ OC.Share={
 				var itemType = $('#dropdown').data('item-type');
 				var itemSource = $('#dropdown').data('item-source');
 				var itemSourceName = $('#dropdown').data('item-source-name');
+				var expirationDate = $('#dropdown #expirationDate').val();
 				var shareType = selected.item.value.shareType;
 				var shareWith = selected.item.value.shareWith;
 				$(this).val(shareWith);
@@ -310,7 +312,7 @@ OC.Share={
 					permissions = permissions | OC.PERMISSION_SHARE;
 				}
 
-				OC.Share.share(itemType, itemSource, shareType, shareWith, permissions, itemSourceName, function() {
+				OC.Share.share(itemType, itemSource, shareType, shareWith, permissions, itemSourceName, expirationDate, function() {
 					OC.Share.addShareWith(shareType, shareWith, selected.item.label, permissions, possiblePermissions);
 					$('#shareWith').val('');
 					OC.Share.updateIcon(itemType, itemSource);
@@ -605,9 +607,10 @@ $(document).ready(function() {
 		var itemType = $('#dropdown').data('item-type');
 		var itemSource = $('#dropdown').data('item-source');
 		var itemSourceName = $('#dropdown').data('item-source-name');
+		var expirationDate = $('#dropdown #expirationDate').val();
 		if (this.checked) {
 			// Create a link
-			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', OC.PERMISSION_READ, itemSourceName, function(data) {
+			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', OC.PERMISSION_READ, itemSourceName, expirationDate, function(data) {
 				OC.Share.showLink(data.token, null, itemSource);
 				OC.Share.updateIcon(itemType, itemSource);
 			});
@@ -637,6 +640,7 @@ $(document).ready(function() {
 		var itemType = $('#dropdown').data('item-type');
 		var itemSource = $('#dropdown').data('item-source');
 		var itemSourceName = $('#dropdown').data('item-source-name');
+		var expirationDate = $('#dropdown #expirationDate').val();
 		var permissions = 0;
 
 		// Calculate permissions
@@ -647,7 +651,7 @@ $(document).ready(function() {
 		}
 
 		// Update the share information
-		OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', permissions, itemSourceName, function(data) {
+		OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', permissions, itemSourceName, expirationDate, function(data) {
 		});
 	});
 
@@ -658,6 +662,7 @@ $(document).ready(function() {
 			var itemSource = $('#dropdown').data('item-source');
 			var itemSourceName = $('#dropdown').data('item-source-name');
 			var allowPublicUpload = $('#sharingDialogAllowPublicUpload').is(':checked');
+			var expirationDate = $('#dropdown #expirationDate').val();
 			var permissions = 0;
 
 			// Calculate permissions
@@ -668,7 +673,7 @@ $(document).ready(function() {
 			}
 
 
-			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', permissions, itemSourceName);
+			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', permissions, itemSourceName, expirationDate);
 		} else {
 			$('#linkPassText').focus();
 		}
@@ -683,6 +688,7 @@ $(document).ready(function() {
 			var itemType = dropDown.data('item-type');
 			var itemSource = dropDown.data('item-source');
 			var itemSourceName = $('#dropdown').data('item-source-name');
+			var expirationDate = $('#dropdown #expirationDate').val();
 			var permissions = 0;
 
 			// Calculate permissions
@@ -692,7 +698,7 @@ $(document).ready(function() {
 				permissions = OC.PERMISSION_READ;
 			}
 
-			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, $('#linkPassText').val(), permissions, itemSourceName, function() {
+			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, $('#linkPassText').val(), permissions, itemSourceName, expirationDate, function() {
 				console.log("password set to: '" + linkPassText.val() +"' by event: " + event.type);
 				linkPassText.val('');
 				linkPassText.attr('placeholder', t('core', 'Password protected'));

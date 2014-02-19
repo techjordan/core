@@ -468,7 +468,7 @@ class Share {
 	 * @internal param \OCP\CRUDS $int permissions
 	 * @return bool|string Returns true on success or false on failure, Returns token on success for links
 	 */
-	public static function shareItem($itemType, $itemSource, $shareType, $shareWith, $permissions, $itemSourceName = null) {
+	public static function shareItem($itemType, $itemSource, $shareType, $shareWith, $permissions, $itemSourceName = null, \DateTime $expirationDate = null) {
 		$uidOwner = \OC_User::getUser();
 		$sharingPolicy = \OC_Appconfig::getValue('core', 'shareapi_share_policy', 'global');
 
@@ -571,7 +571,7 @@ class Share {
 					$token = \OC_Util::generateRandomBytes(self::TOKEN_LENGTH);
 				}
 				$result = self::put($itemType, $itemSource, $shareType, $shareWith, $uidOwner, $permissions,
-					null, $token, $itemSourceName);
+					null, $token, $itemSourceName, $expirationDate);
 				if ($result) {
 					return $token;
 				} else {
@@ -610,7 +610,7 @@ class Share {
 		}
 		// If the item is a folder, scan through the folder looking for equivalent item types
 // 		if ($itemType == 'folder') {
-// 			$parentFolder = self::put('folder', $itemSource, $shareType, $shareWith, $uidOwner, $permissions, true);
+// 			$parentFolder = self::put('folder', $itemSource, $shareType, $shareWith, $uidOwner, $permissions, true, null, null, $expirationDate);
 // 			if ($parentFolder && $files = \OC\Files\Filesystem::getDirectoryContent($itemSource)) {
 // 				for ($i = 0; $i < count($files); $i++) {
 // 					$name = substr($files[$i]['name'], strpos($files[$i]['name'], $itemSource) - strlen($itemSource));
@@ -629,7 +629,7 @@ class Share {
 // 							}
 // 						}
 // 						// Pass on to put() to check if this item should be converted, the item won't be inserted into the database unless it can be converted
-// 						self::put($itemType, $name, $shareType, $shareWith, $uidOwner, $permissions, $parentFolder);
+// 						self::put($itemType, $name, $shareType, $shareWith, $uidOwner, $permissions, $parentFolder, null, null, $expirationDate);
 // 					}
 // 				}
 // 				return true;
@@ -637,7 +637,7 @@ class Share {
 // 			return false;
 // 		} else {
 			// Put the item into the database
-			return self::put($itemType, $itemSource, $shareType, $shareWith, $uidOwner, $permissions, null, null, $itemSourceName);
+			return self::put($itemType, $itemSource, $shareType, $shareWith, $uidOwner, $permissions, null, null, $itemSourceName, $expirationDate);
 // 		}
 	}
 
@@ -1393,7 +1393,7 @@ class Share {
 	 * @return bool Returns true on success or false on failure
 	 */
 	private static function put($itemType, $itemSource, $shareType, $shareWith, $uidOwner,
-		$permissions, $parentFolder = null, $token = null, $itemSourceName = null) {
+		$permissions, $parentFolder = null, $token = null, $itemSourceName = null, \DateTime $expirationDate = null) {
 		$backend = self::getBackend($itemType);
 
 		// Check if this is a reshare
@@ -1420,6 +1420,7 @@ class Share {
 					$suggestedItemTarget = $checkReshare['item_target'];
 					$suggestedFileTarget = $checkReshare['file_target'];
 					$filePath = $checkReshare['file_target'];
+					$expirationDate = min($expirationDate, $checkReshare['expiration']);
 				}
 			} else {
 				$message = 'Sharing '.$itemSourceName.' failed, because resharing is not allowed';
@@ -1457,7 +1458,8 @@ class Share {
 		}
 		$query = \OC_DB::prepare('INSERT INTO `*PREFIX*share` (`item_type`, `item_source`, `item_target`,'
 			.' `parent`, `share_type`, `share_with`, `uid_owner`, `permissions`, `stime`, `file_source`,'
-			.' `file_target`, `token`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)');
+			.' `file_target`, `token`, `expiration`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)');
+
 		// Share with a group
 		if ($shareType == self::SHARE_TYPE_GROUP) {
 			$groupItemTarget = self::generateTarget($itemType, $itemSource, $shareType, $shareWith['group'],
@@ -1473,6 +1475,7 @@ class Share {
 				'uidOwner' => $uidOwner,
 				'permissions' => $permissions,
 				'fileSource' => $fileSource,
+				'expirationDate' => $expirationDate,
 				'token' => $token,
 				'run' => &$run,
 				'error' => &$error
@@ -1501,8 +1504,22 @@ class Share {
 			} else {
 				$groupFileTarget = null;
 			}
-			$query->execute(array($itemType, $itemSource, $groupItemTarget, $parent, $shareType,
-				$shareWith['group'], $uidOwner, $permissions, time(), $fileSource, $groupFileTarget, $token));
+
+			$query->bindValue(1, $itemType);
+			$query->bindValue(2, $itemSource);
+			$query->bindValue(3, $groupItemTarget);
+			$query->bindValue(4, $parent);
+			$query->bindValue(5, $shareType);
+			$query->bindValue(6, $shareWith['group']);
+			$query->bindValue(7, $uidOwner);
+			$query->bindValue(8, $permissions);
+			$query->bindValue(9, time());
+			$query->bindValue(10, $fileSource);
+			$query->bindValue(11, $groupFileTarget);
+			$query->bindValue(12, $token);
+			$query->bindValue(13, $expirationDate, 'datetime');
+			$query->execute();
+
 			// Save this id, any extra rows for this group share will need to reference it
 			$parent = \OC_DB::insertid('*PREFIX*share');
 			// Loop through all users of this group in case we need to add an extra row
@@ -1530,9 +1547,20 @@ class Share {
 				}
 				// Insert an extra row for the group share if the item or file target is unique for this user
 				if ($itemTarget != $groupItemTarget || (isset($fileSource) && $fileTarget != $groupFileTarget)) {
-					$query->execute(array($itemType, $itemSource, $itemTarget, $parent,
-						self::$shareTypeGroupUserUnique, $uid, $uidOwner, $permissions, time(),
-							$fileSource, $fileTarget, $token));
+					$query->bindValue(1, $itemType);
+					$query->bindValue(2, $itemSource);
+					$query->bindValue(3, $itemTarget);
+					$query->bindValue(4, $parent);
+					$query->bindValue(5, self::$shareTypeGroupUserUnique);
+					$query->bindValue(6, $uid);
+					$query->bindValue(7, $uidOwner);
+					$query->bindValue(8, $permissions);
+					$query->bindValue(9, time());
+					$query->bindValue(10, $fileSource);
+					$query->bindValue(11, $fileTarget);
+					$query->bindValue(12, $token);
+					$query->bindValue(13, $expirationDate, 'datetime');
+					$query->execute();
 					$id = \OC_DB::insertid('*PREFIX*share');
 				}
 			}
@@ -1546,6 +1574,7 @@ class Share {
 				'uidOwner' => $uidOwner,
 				'permissions' => $permissions,
 				'fileSource' => $fileSource,
+				'expirationDate' => $expirationDate,
 				'fileTarget' => $groupFileTarget,
 				'id' => $parent,
 				'token' => $token
@@ -1569,6 +1598,7 @@ class Share {
 				'uidOwner' => $uidOwner,
 				'permissions' => $permissions,
 				'fileSource' => $fileSource,
+				'expirationDate' => $expirationDate,
 				'token' => $token,
 				'run' => &$run,
 				'error' => &$error
@@ -1595,9 +1625,23 @@ class Share {
 			} else {
 				$fileTarget = null;
 			}
-			$query->execute(array($itemType, $itemSource, $itemTarget, $parent, $shareType, $shareWith, $uidOwner,
-				$permissions, time(), $fileSource, $fileTarget, $token));
+
+			$query->bindValue(1, $itemType);
+			$query->bindValue(2, $itemSource);
+			$query->bindValue(3, $itemTarget);
+			$query->bindValue(4, $parent);
+			$query->bindValue(5, $shareType);
+			$query->bindValue(6, $shareWith);
+			$query->bindValue(7, $uidOwner);
+			$query->bindValue(8, $permissions);
+			$query->bindValue(9, time());
+			$query->bindValue(10, $fileSource);
+			$query->bindValue(11, $fileTarget);
+			$query->bindValue(12, $token);
+			$query->bindValue(13, $expirationDate, 'datetime');
+			$query->execute();
 			$id = \OC_DB::insertid('*PREFIX*share');
+
 			\OC_Hook::emit('OCP\Share', 'post_shared', array(
 				'itemType' => $itemType,
 				'itemSource' => $itemSource,
@@ -1608,6 +1652,7 @@ class Share {
 				'uidOwner' => $uidOwner,
 				'permissions' => $permissions,
 				'fileSource' => $fileSource,
+				'expirationDate' => $expirationDate,
 				'fileTarget' => $fileTarget,
 				'id' => $id,
 				'token' => $token

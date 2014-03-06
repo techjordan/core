@@ -142,6 +142,9 @@ var FileActions = {
 				//alert(element);
 				element.on('click', {a: null, elem: parent, actionFunc: actions[name]}, actionHandler);
 				if (name === 'Download') {
+					// cleanup old download buttons
+					parent.parent().find('td.filesize span .action').remove();
+					// add new download button
 					parent.parent().find(actionContainer).append(element);
 				} else {
 					parent.find(actionContainer).append(element);
@@ -218,7 +221,7 @@ $(document).ready(function () {
 	$('#fileList tr').each(function () {
 		FileActions.display($(this).children('td.filename'));
 	});
-	
+
 	$('#fileList').trigger(jQuery.Event("fileActionsReady"));
 
 });

@@ -138,8 +138,8 @@ table th#headerName {
 	height: 50px;
 }
 
-table th#headerSize {
-	padding-right:35px !important;
+#filestable th#headerSize {
+	padding-right: 35px;
 }
 
 table th#headerSize, table td.filesize {

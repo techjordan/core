@@ -292,7 +292,10 @@ OC.Share={
 				var itemType = $('#dropdown').data('item-type');
 				var itemSource = $('#dropdown').data('item-source');
 				var itemSourceName = $('#dropdown').data('item-source-name');
-				var expirationDate = $('#dropdown #expirationDate').val();
+				var expirationDate = '';
+				if ( $('#expirationCheckbox').is(':checked') === true ) {
+					expirationDate = $( "#expirationDate" ).val();
+				}
 				var shareType = selected.item.value.shareType;
 				var shareWith = selected.item.value.shareWith;
 				$(this).val(shareWith);
@@ -607,7 +610,10 @@ $(document).ready(function() {
 		var itemType = $('#dropdown').data('item-type');
 		var itemSource = $('#dropdown').data('item-source');
 		var itemSourceName = $('#dropdown').data('item-source-name');
-		var expirationDate = $('#dropdown #expirationDate').val();
+		var expirationDate = '';
+		if ( $('#expirationCheckbox').is(':checked') === true ) {
+			expirationDate = $( "#expirationDate" ).val();
+		}
 		if (this.checked) {
 			// Create a link
 			OC.Share.share(itemType, itemSource, OC.Share.SHARE_TYPE_LINK, '', OC.PERMISSION_READ, itemSourceName, expirationDate, function(data) {
@@ -640,7 +646,10 @@ $(document).ready(function() {
 		var itemType = $('#dropdown').data('item-type');
 		var itemSource = $('#dropdown').data('item-source');
 		var itemSourceName = $('#dropdown').data('item-source-name');
-		var expirationDate = $('#dropdown #expirationDate').val();
+		var expirationDate = '';
+		if ( $('#expirationCheckbox').is(':checked') === true ) {
+			expirationDate = $( "#expirationDate" ).val();
+		}
 		var permissions = 0;
 
 		// Calculate permissions
@@ -662,7 +671,10 @@ $(document).ready(function() {
 			var itemSource = $('#dropdown').data('item-source');
 			var itemSourceName = $('#dropdown').data('item-source-name');
 			var allowPublicUpload = $('#sharingDialogAllowPublicUpload').is(':checked');
-			var expirationDate = $('#dropdown #expirationDate').val();
+			var expirationDate = '';
+			if ( $('#expirationCheckbox').is(':checked') === true ) {
+				expirationDate = $( "#expirationDate" ).val();
+			}
 			var permissions = 0;
 
 			// Calculate permissions
@@ -688,7 +700,10 @@ $(document).ready(function() {
 			var itemType = dropDown.data('item-type');
 			var itemSource = dropDown.data('item-source');
 			var itemSourceName = $('#dropdown').data('item-source-name');
-			var expirationDate = $('#dropdown #expirationDate').val();
+			var expirationDate = '';
+			if ( $('#expirationCheckbox').is(':checked') === true ) {
+				expirationDate = $( "#expirationDate" ).val();
+			}
 			var permissions = 0;
 
 			// Calculate permissions

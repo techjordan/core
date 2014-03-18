@@ -35,21 +35,10 @@ if (isset($_POST['action']) && isset($_POST['itemType']) && isset($_POST['itemSo
 					if ($shareType === OCP\Share::SHARE_TYPE_LINK && $shareWith == '') {
 						$shareWith = null;
 					}
-					$itemType = $_POST['itemType'];
-					$itemSource = $_POST['itemSource'];
-
-					// verify that the file exists before we try to share it
-					if ($itemType === 'file' or $itemType === 'folder') {
-						$path = \OC\Files\Filesystem::getPath($itemSource);
-						if (!$path) {
-							OC_JSON::error(array('data' => array('message' => 'source file not found')));
-							exit;
-						}
-					}
 
 					$token = OCP\Share::shareItem(
-						$itemType,
-						$itemSource,
+						$_POST['itemType'],
+						$_POST['itemSource'],
 						$shareType,
 						$shareWith,
 						$_POST['permissions'],

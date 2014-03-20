@@ -159,10 +159,11 @@ abstract class Common implements \OC\Files\Storage\Storage {
 	}
 
 	public function hash($type, $path, $raw = false) {
-		$tmpFile = $this->getLocalFile($path);
-		$hash = hash($type, $tmpFile, $raw);
-		unlink($tmpFile);
-		return $hash;
+		$fh = $this->fopen($path, 'r');
+		$ctx = hash_init($type);
+		hash_update_stream($ctx, $fh);
+		fclose($fh);
+		return hash_final($ctx, $raw);
 	}
 
 	public function search($query) {

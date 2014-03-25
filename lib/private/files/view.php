@@ -787,8 +787,8 @@ class View {
 	 * get the filesystem info
 	 *
 	 * @param string $path
-	 * @param boolean $includeMountPoints whether to add mountpoint sizes,
-	 * defaults to true
+	 * @param boolean|string $includeMountPoints true to add mountpoint sizes,
+	 * 'ext' to add only ext storage mount point sizes. Defaults to true.
 	 * @return \OC\Files\FileInfo | false
 	 */
 	public function getFileInfo($path, $includeMountPoints = true) {
@@ -823,10 +823,15 @@ class View {
 			if ($data and $data['fileid']) {
 				if ($includeMountPoints and $data['mimetype'] === 'httpd/unix-directory') {
 					//add the sizes of other mountpoints to the folder
+					$extOnly = ($includeMountPoints === 'ext');
 					$mountPoints = Filesystem::getMountPoints($path);
 					foreach ($mountPoints as $mountPoint) {
 						$subStorage = Filesystem::getStorage($mountPoint);
 						if ($subStorage) {
+							// exclude shared storage ?
+							if ($extOnly && $subStorage instanceof \OC\Files\Storage\Shared) {
+								continue;
+							}
 							$subCache = $subStorage->getCache('');
 							$rootEntry = $subCache->get('');
 							$data['size'] += isset($rootEntry['size']) ? $rootEntry['size'] : 0;

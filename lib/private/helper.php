@@ -818,7 +818,7 @@ class OC_Helper {
 
 	/**
 	 * Calculate free space left within user quota
-	 * 
+	 *
 	 * @param string $dir the current folder where the user currently operates
 	 * @return int number of bytes representing
 	 */
@@ -880,14 +880,28 @@ class OC_Helper {
 	 */
 	public static function getStorageInfo($path) {
 		// return storage info without adding mount points
+		$includeExtStorage = \OC_Config::getValue('quota_include_external_storage', false);
+
 		$rootInfo = \OC\Files\Filesystem::getFileInfo($path, false);
 		$used = $rootInfo['size'];
 		if ($used < 0) {
 			$used = 0;
 		}
 		$quota = 0;
-		// TODO: need a better way to get total space from storage
 		$storage = $rootInfo->getStorage();
+		if ($includeExtStorage && $storage instanceof \OC\Files\Storage\Shared) {
+			$includeExtStorage = false;
+		}
+		if ($includeExtStorage) {
+			$quota = OC_Util::getUserQuota(\OCP\User::getUser());
+			if ($quota !== \OC\Files\SPACE_UNLIMITED) {
+				// always get free space / total space from root + mount points
+				$path = '';
+				return self::getGlobalStorageInfo();
+			}
+		}
+
+		// TODO: need a better way to get total space from storage
 		if ($storage instanceof \OC\Files\Storage\Wrapper\Quota) {
 			$quota = $storage->getQuota();
 		}
@@ -908,5 +922,36 @@ class OC_Helper {
 		}
 
 		return array('free' => $free, 'used' => $used, 'total' => $total, 'relative' => $relative);
+	}
+
+	/**
+	 * Get storage info including all mount points and quota
+	 *
+	 * @return array
+	 */
+	private static function getGlobalStorageInfo() {
+		$quota = OC_Util::getUserQuota(\OCP\User::getUser());
+
+		$rootInfo = \OC\Files\Filesystem::getFileInfo('', 'ext');
+		$used = $rootInfo['size'];
+		if ($used < 0) {
+			$used = 0;
+		}
+
+		$total = $quota;
+		$free = $quota - $used;
+
+		if ($total > 0) {
+			if ($quota > 0 && $total > $quota) {
+				$total = $quota;
+			}
+			// prevent division by zero or error codes (negative values)
+			$relative = round(($used / $total) * 10000) / 100;
+		} else {
+			$relative = 0;
+		}
+
+		return array('free' => $free, 'used' => $used, 'total' => $total, 'relative' => $relative);
+
 	}
 }

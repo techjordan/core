@@ -25,6 +25,10 @@ $(document).ready(function() {
 		enableActions();
 	}
 
+	Files.updateStorageStatistics = function() {
+		// no op
+	};
+
 	if (typeof FileActions !== 'undefined') {
 		FileActions.register('all', 'Restore', OC.PERMISSION_READ, OC.imagePath('core', 'actions/history'), function(filename) {
 			var tr = FileList.findFileEl(filename);
